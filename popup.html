@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTZemig</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="container">
+    <h2>MTZemig</h2>
+
+    <!-- Captured Bill Data Section -->
+    <div id="captured-data-section" class="hidden">
+      <div class="section-header">
+        <h3>Dados da Fatura</h3>
+        <button id="copy-json-btn" class="btn-small" title="Copiar JSON">Copiar</button>
+      </div>
+
+      <div class="bill-header" id="bill-header"></div>
+
+      <div class="card">
+        <h4>Dados Extraídos</h4>
+        <div class="form-group inline">
+          <label for="tipo-ligacao">Tipo Ligação</label>
+          <select id="tipo-ligacao">
+            <option value="100" selected>Trifásico</option>
+            <option value="50">Bifásico</option>
+            <option value="30">Monofásico</option>
+          </select>
+        </div>
+        <div class="data-grid" id="extracted-data"></div>
+      </div>
+
+      <div class="card">
+        <h4>Resumo</h4>
+        <div class="data-grid" id="summary-data"></div>
+      </div>
+
+      <div class="card">
+        <h4>Cálculo de Desconto</h4>
+        <div class="form-group">
+          <label for="desconto">% de Desconto (Desconto MTZ)</label>
+          <input type="number" id="desconto" value="30" placeholder="Ex: 30">
+        </div>
+        <div class="data-grid" id="discount-data"></div>
+      </div>
+
+      <div class="card">
+        <h4>Gerar Documento</h4>
+        <div class="form-group">
+          <label for="cliente-nome">Nome do Cliente</label>
+          <input type="text" id="cliente-nome" placeholder="Ex: Auto Posto Rede Souza Ltda">
+        </div>
+        <div class="form-group">
+          <label for="cliente-cnpj">CNPJ/CPF</label>
+          <input type="text" id="cliente-cnpj" placeholder="Ex: 00.000.000/0001-00">
+        </div>
+        <div class="form-group">
+          <label for="cliente-endereco">Endereço</label>
+          <input type="text" id="cliente-endereco" placeholder="Ex: Rua Exemplo, 123">
+        </div>
+        <div class="form-group">
+          <label for="n-instalacao">Nº Instalação</label>
+          <input type="text" id="n-instalacao" placeholder="Ex: 3007555282">
+        </div>
+        <button id="generate-doc-btn" class="btn success">Gerar Documento</button>
+      </div>
+
+      <details class="json-details">
+        <summary>Ver JSON Completo</summary>
+        <pre id="json-full"></pre>
+      </details>
+    </div>
+
+    <!-- Account List -->
+    <div id="account-list" class="account-list"></div>
+
+    <button id="show-add-form-btn" class="btn primary">Adicionar Nova Conta</button>
+
+    <div id="add-account-form" class="hidden">
+      <h3>Nova Conta</h3>
+      <div class="form-group">
+        <label for="username">Usuário / Email</label>
+        <input type="text" id="username" placeholder="Digite o usuário">
+      </div>
+      <div class="form-group">
+        <label for="password">Senha</label>
+        <input type="password" id="password" placeholder="Digite a senha">
+      </div>
+      <hr style="border-color: rgba(255,255,255,0.1); margin: 12px 0;">
+      <h4 style="margin: 8px 0; color: #aaa; font-size: 12px;">Dados do Cliente</h4>
+      <div class="form-group">
+        <label for="acc-nome">Nome do Cliente</label>
+        <input type="text" id="acc-nome" placeholder="Ex: Auto Posto Rede Souza Ltda">
+      </div>
+      <div class="form-group">
+        <label for="acc-cnpj">CNPJ/CPF</label>
+        <input type="text" id="acc-cnpj" placeholder="Ex: 00.000.000/0001-00">
+      </div>
+      <div class="form-group">
+        <label for="acc-endereco">Endereço</label>
+        <input type="text" id="acc-endereco" placeholder="Ex: Rua Exemplo, 123">
+      </div>
+      <div class="form-group">
+        <label for="acc-instalacao">Nº Instalação</label>
+        <input type="text" id="acc-instalacao" placeholder="Ex: 3007555282">
+      </div>
+      <div class="form-group inline">
+        <label for="acc-tipo">Tipo Ligação</label>
+        <select id="acc-tipo">
+          <option value="100" selected>Trifásico</option>
+          <option value="50">Bifásico</option>
+          <option value="30">Monofásico</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="acc-desconto">% Desconto MTZ</label>
+        <input type="number" id="acc-desconto" value="30" placeholder="Ex: 30">
+      </div>
+      <div class="form-actions">
+        <button id="save-btn" class="btn success">Salvar</button>
+        <button id="cancel-btn" class="btn secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
