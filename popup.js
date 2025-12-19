@@ -415,6 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         template = template.replace(/\{\{QTPAGARIA\}\}/g, 'R$ ' + formatCurrency(calc.totalSemMTZ));
         template = template.replace(/\{\{TOTAlMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORPAGAR\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
+        template = template.replace(/\{\{VALORMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorMTZ));
 
         // Download the file
         const blob = new Blob([template], { type: 'application/vnd.oasis.opendocument.text' });

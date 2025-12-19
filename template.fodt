@@ -481,7 +481,7 @@
      </draw:enhanced-geometry>
     </draw:custom-shape><draw:custom-shape text:anchor-type="paragraph" draw:z-index="4" draw:name="Shape 5" draw:style-name="gr2" draw:text-style-name="P3" svg:width="1.413in" svg:height="0.5323in" svg:x="5.3661in" svg:y="0.15in">
      <text:p text:style-name="P1"><text:span text:style-name="T1">VALOR A PAGAR</text:span></text:p>
-     <text:p text:style-name="P1"><text:span text:style-name="T1">{{VALORPAGAR}}</text:span></text:p>
+     <text:p text:style-name="P1"><text:span text:style-name="T1">{{VALORMTZ}}</text:span></text:p>
      <text:p text:style-name="P1"><text:span text:style-name="T1"/></text:p>
      <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:path-stretchpoint-x="10800" draw:path-stretchpoint-y="10800" draw:text-areas="?f3 ?f4 ?f5 ?f6" draw:type="round-rectangle" draw:modifiers="3600" draw:enhanced-path="M ?f7 0 X 0 ?f8 L 0 ?f9 Y ?f7 21600 L ?f10 21600 X 21600 ?f9 L 21600 ?f8 Y ?f10 0 Z N">
       <draw:equation draw:name="f0" draw:formula="45"/>
@@ -606,7 +606,7 @@
    <text:p text:style-name="P9"/>
    <text:p text:style-name="P10">Quanto você pagaria sem energia solar → {{QTPAGARIA}}</text:p>
    <text:p text:style-name="P10"/>
-   <text:p text:style-name="P10">Total a pagar com a MTZ → {{TOTAlMTZ}}</text:p>
+   <text:p text:style-name="P10">Total MTZ+CONCESSIONÁRIA → {{TOTAlMTZ}}</text:p>
    <text:p text:style-name="P10"/>
    <text:p text:style-name="P10"/>
    <text:p text:style-name="P10"/>
