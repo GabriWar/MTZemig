@@ -11,8 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const descontoInput = document.getElementById('desconto');
   const tipoLigacaoSelect = document.getElementById('tipo-ligacao');
   const generateDocBtn = document.getElementById('generate-doc-btn');
+  const formTitle = document.getElementById('form-title');
 
   let currentBillData = null;
+  let editingUser = null; // Track which account is being edited
 
   loadAccounts();
   loadCapturedData();
@@ -37,11 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   showAddBtn.addEventListener('click', () => {
+    editingUser = null; // Clear edit mode
+    clearForm();
+    if (formTitle) formTitle.textContent = 'Nova Conta';
     addForm.classList.remove('hidden');
     showAddBtn.classList.add('hidden');
   });
 
   cancelBtn.addEventListener('click', () => {
+    editingUser = null; // Clear edit mode
+    if (formTitle) formTitle.textContent = 'Nova Conta';
     addForm.classList.add('hidden');
     showAddBtn.classList.remove('hidden');
     clearForm();
@@ -78,14 +85,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveAccount(accountData) {
     chrome.storage.local.get(['cemigAccounts'], (result) => {
-      const accounts = result.cemigAccounts || [];
-      const idx = accounts.findIndex(a => a.user === accountData.user);
-      if (idx >= 0) {
-        accounts[idx] = accountData; // Update all fields
-      } else {
+      let accounts = result.cemigAccounts || [];
+      
+      if (editingUser !== null) {
+        // Edit mode: remove old account and add updated one
+        accounts = accounts.filter(a => a.user !== editingUser);
         accounts.push(accountData);
+      } else {
+        // Add mode: check if username already exists
+        const idx = accounts.findIndex(a => a.user === accountData.user);
+        if (idx >= 0) {
+          accounts[idx] = accountData; // Update all fields
+        } else {
+          accounts.push(accountData);
+        }
       }
+      
       chrome.storage.local.set({ cemigAccounts: accounts }, () => {
+        editingUser = null; // Clear edit mode
         loadAccounts();
         addForm.classList.add('hidden');
         showAddBtn.classList.remove('hidden');
@@ -103,6 +120,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function editAccount(account) {
+    editingUser = account.user; // Set edit mode
+    
+    // Update form title
+    if (formTitle) formTitle.textContent = 'Editar Conta';
+    
+    // Fill form with account data
+    usernameInput.value = account.user || '';
+    passwordInput.value = account.pass || '';
+    document.getElementById('acc-nome').value = account.nome || '';
+    document.getElementById('acc-cnpj').value = account.cnpj || '';
+    document.getElementById('acc-endereco').value = account.endereco || '';
+    document.getElementById('acc-instalacao').value = account.instalacao || '';
+    document.getElementById('acc-tipo').value = account.tipoLigacao || '100';
+    document.getElementById('acc-desconto').value = account.desconto || '30';
+    
+    // Show form
+    addForm.classList.remove('hidden');
+    showAddBtn.classList.add('hidden');
+  }
+
   function renderAccounts(accounts) {
     accountList.innerHTML = accounts.length === 0
       ? '<p style="text-align:center; color:#888;">Nenhuma conta salva.</p>'
@@ -113,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
       item.style.cursor = 'pointer';
       item.title = 'Clique para preencher dados e autofill';
       item.addEventListener('click', (e) => {
-        if (e.target.closest('.delete-btn')) return;
+        if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn')) return;
 
         // Fill customer data in the document section
         document.getElementById('cliente-nome').value = acc.nome || '';
@@ -143,8 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="account-user">${displayName}</div>
           <div class="account-pass">${subInfo}</div>
         </div>
-        <button class="delete-btn" title="Remover">&times;</button>
+        <div class="account-actions">
+          <button class="edit-btn" title="Editar">Editar</button>
+          <button class="delete-btn" title="Remover">&times;</button>
+        </div>
       `;
+      item.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); editAccount(acc); };
       item.querySelector('.delete-btn').onclick = (e) => { e.stopPropagation(); deleteAccount(acc.user); };
       accountList.appendChild(item);
     });

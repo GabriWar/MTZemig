@@ -289,13 +289,41 @@ select {
     color: #666;
 }
 
+.account-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-btn {
+    background: none;
+    border: none;
+    color: #00d9a5;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.edit-btn:hover {
+    color: #00ffbb;
+    background: rgba(0, 217, 165, 0.1);
+    border-radius: 4px;
+}
+
 .delete-btn {
     background: none;
     border: none;
     color: #f44336;
     cursor: pointer;
     font-size: 18px;
-    padding: 0 0 0 8px;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.delete-btn:hover {
+    color: #ff5744;
 }
 
 /* JSON Details */
