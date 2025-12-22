@@ -78,7 +78,24 @@
     <!-- Account List -->
     <div id="account-list" class="account-list"></div>
 
+    <div class="button-group">
+      <button id="export-btn" class="btn info">Exportar Contas</button>
+      <button id="import-btn" class="btn info">Importar Contas</button>
+    </div>
+
     <button id="show-add-form-btn" class="btn primary">Adicionar Nova Conta</button>
+
+    <div id="import-form" class="hidden">
+      <h3>Importar Contas</h3>
+      <div class="form-group">
+        <label for="json-import">Cole o JSON aqui</label>
+        <textarea id="json-import" rows="8" placeholder='[{"user":"exemplo@email.com","pass":"senha123",...}]'></textarea>
+      </div>
+      <div class="form-actions">
+        <button id="import-confirm-btn" class="btn success">Importar</button>
+        <button id="import-cancel-btn" class="btn secondary">Cancelar</button>
+      </div>
+    </div>
 
     <div id="add-account-form" class="hidden">
       <h3 id="form-title">Nova Conta</h3>

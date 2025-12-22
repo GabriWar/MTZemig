@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const tipoLigacaoSelect = document.getElementById('tipo-ligacao');
   const generateDocBtn = document.getElementById('generate-doc-btn');
   const formTitle = document.getElementById('form-title');
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importForm = document.getElementById('import-form');
+  const importConfirmBtn = document.getElementById('import-confirm-btn');
+  const importCancelBtn = document.getElementById('import-cancel-btn');
+  const jsonImportTextarea = document.getElementById('json-import');
 
   let currentBillData = null;
   let editingUser = null; // Track which account is being edited
@@ -19,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAccounts();
   loadCapturedData();
   setupGenerateDocument();
+  setupImportExport();
 
   descontoInput?.addEventListener('input', () => {
     if (currentBillData) updateCalculations();
@@ -473,6 +480,102 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error('Error generating document:', err);
         alert('Erro ao gerar documento: ' + err.message);
+      }
+    });
+  }
+
+  function setupImportExport() {
+    // Export button
+    exportBtn?.addEventListener('click', () => {
+      chrome.storage.local.get(['cemigAccounts'], (result) => {
+        const accounts = result.cemigAccounts || [];
+        if (accounts.length === 0) {
+          alert('Nenhuma conta para exportar!');
+          return;
+        }
+
+        // Create JSON string
+        const jsonString = JSON.stringify(accounts, null, 2);
+
+        // Download as file
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cemig_accounts_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        exportBtn.textContent = 'Exportado!';
+        setTimeout(() => exportBtn.textContent = 'Exportar Contas', 2000);
+      });
+    });
+
+    // Import button - show form
+    importBtn?.addEventListener('click', () => {
+      importForm.classList.remove('hidden');
+      showAddBtn.classList.add('hidden');
+      addForm.classList.add('hidden');
+      jsonImportTextarea.value = '';
+    });
+
+    // Import cancel
+    importCancelBtn?.addEventListener('click', () => {
+      importForm.classList.add('hidden');
+      showAddBtn.classList.remove('hidden');
+      jsonImportTextarea.value = '';
+    });
+
+    // Import confirm
+    importConfirmBtn?.addEventListener('click', () => {
+      const jsonText = jsonImportTextarea.value.trim();
+      if (!jsonText) {
+        alert('Por favor, cole o JSON das contas.');
+        return;
+      }
+
+      try {
+        const importedAccounts = JSON.parse(jsonText);
+        
+        // Validate it's an array
+        if (!Array.isArray(importedAccounts)) {
+          alert('JSON inválido! Deve ser um array de contas.');
+          return;
+        }
+
+        // Validate each account has required fields
+        for (let acc of importedAccounts) {
+          if (!acc.user || !acc.pass) {
+            alert('JSON inválido! Cada conta deve ter "user" e "pass".');
+            return;
+          }
+        }
+
+        // Merge with existing accounts
+        chrome.storage.local.get(['cemigAccounts'], (result) => {
+          const existingAccounts = result.cemigAccounts || [];
+          const merged = [...existingAccounts];
+
+          // Add or update accounts
+          importedAccounts.forEach(importedAcc => {
+            const idx = merged.findIndex(a => a.user === importedAcc.user);
+            if (idx >= 0) {
+              merged[idx] = importedAcc; // Update existing
+            } else {
+              merged.push(importedAcc); // Add new
+            }
+          });
+
+          chrome.storage.local.set({ cemigAccounts: merged }, () => {
+            loadAccounts();
+            importForm.classList.add('hidden');
+            showAddBtn.classList.remove('hidden');
+            jsonImportTextarea.value = '';
+            alert(`${importedAccounts.length} conta(s) importada(s) com sucesso!`);
+          });
+        });
+      } catch (err) {
+        alert('Erro ao processar JSON: ' + err.message);
       }
     });
   }
