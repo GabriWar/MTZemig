@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentBillData = null;
   let editingUser = null; // Track which account is being edited
+  let selectedAccount = null; // Track which account is selected for document generation
 
   loadAccounts();
   loadCapturedData();
@@ -160,11 +161,20 @@ document.addEventListener('DOMContentLoaded', () => {
       item.addEventListener('click', (e) => {
         if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn')) return;
 
-        // Fill customer data in the document section
-        document.getElementById('cliente-nome').value = acc.nome || '';
-        document.getElementById('cliente-cnpj').value = acc.cnpj || '';
-        document.getElementById('cliente-endereco').value = acc.endereco || '';
-        document.getElementById('n-instalacao').value = acc.instalacao || '';
+        // Store selected account
+        selectedAccount = acc;
+
+        // Update UI to show selected account
+        const selectedAccountInfo = document.getElementById('selected-account-info');
+        if (selectedAccountInfo) {
+          selectedAccountInfo.innerHTML = `
+            <span class="data-label">Conta Selecionada</span>
+            <span class="data-value" style="color: #00d9a5;">${acc.nome || acc.user}</span>
+          `;
+        }
+
+        // Enable generate document button
+        if (generateDocBtn) generateDocBtn.disabled = false;
 
         // Fill tipo ligação and desconto
         if (tipoLigacaoSelect) tipoLigacaoSelect.value = acc.tipoLigacao || '100';
@@ -426,6 +436,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (!selectedAccount) {
+        alert('Selecione uma conta antes de gerar o documento!');
+        return;
+      }
+
       const bill = currentBillData.data.billDetails.bills[0];
       const extracted = extractBillData(bill);
       const descontoPercent = parseFloat(descontoInput?.value || 30);
@@ -433,11 +448,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Usar função centralizada de cálculo
       const calc = calculateAll(extracted, bill.value, descontoPercent);
 
-      // Get customer info from inputs
-      const clienteNome = document.getElementById('cliente-nome')?.value || '';
-      const clienteCnpj = document.getElementById('cliente-cnpj')?.value || '';
-      const clienteEndereco = document.getElementById('cliente-endereco')?.value || '';
-      const nInstalacao = document.getElementById('n-instalacao')?.value || '';
+      // Get customer info from selected account
+      const clienteNome = selectedAccount.nome || '';
+      const clienteCnpj = selectedAccount.cnpj || '';
+      const clienteEndereco = selectedAccount.endereco || '';
+      const nInstalacao = selectedAccount.instalacao || '';
 
       // Format date
       const dueDate = new Date(bill.dueDate);
