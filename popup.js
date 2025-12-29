@@ -430,40 +430,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupGenerateDocument() {
+    console.log('[SETUP] setupGenerateDocument called');
+    console.log('[SETUP] generateDocBtn:', generateDocBtn);
+    
     generateDocBtn?.addEventListener('click', async () => {
+      console.log('[CLICK] Generate document button clicked!');
+      console.log('[CHECK] currentBillData:', currentBillData);
+      console.log('[CHECK] selectedAccount:', selectedAccount);
+      
       if (!currentBillData) {
+        console.log('[ERROR] No bill data');
         alert('Nenhuma fatura capturada!');
         return;
       }
 
       if (!selectedAccount) {
+        console.log('[ERROR] No account selected');
         alert('Selecione uma conta antes de gerar o documento!');
         return;
       }
 
+      console.log('[START] Starting document generation...');
       const bill = currentBillData.data.billDetails.bills[0];
+      console.log('[BILL] Bill data:', bill);
+      
       const extracted = extractBillData(bill);
+      console.log('[EXTRACTED] Extracted data:', extracted);
+      
       const descontoPercent = parseFloat(descontoInput?.value || 30);
+      console.log('[DESCONTO] Discount percent:', descontoPercent);
 
       // Usar função centralizada de cálculo
       const calc = calculateAll(extracted, bill.value, descontoPercent);
+      console.log('[CALC] Calculated values:', calc);
 
       // Get customer info from selected account
       const clienteNome = selectedAccount.nome || '';
       const clienteCnpj = selectedAccount.cnpj || '';
       const clienteEndereco = selectedAccount.endereco || '';
       const nInstalacao = selectedAccount.instalacao || '';
+      console.log('[CUSTOMER] Nome:', clienteNome, 'CNPJ:', clienteCnpj);
 
       // Format date
       const dueDate = new Date(bill.dueDate);
       const vencStr = dueDate.toLocaleDateString('pt-BR');
+      console.log('[DATE] Due date:', vencStr);
 
       try {
+        console.log('[TEMPLATE] Fetching template...');
         // Fetch the template file
         const templateUrl = chrome.runtime.getURL('template.fodt');
+        console.log('[TEMPLATE] URL:', templateUrl);
+        
         const response = await fetch(templateUrl);
+        console.log('[TEMPLATE] Response status:', response.status);
+        
         let template = await response.text();
+        console.log('[TEMPLATE] Template loaded, length:', template.length);
 
+        console.log('[REPLACE] Starting template replacements...');
         // Replace all variables using calculated values
         template = template.replace(/\{\{CLIENTE\}\}/g, clienteNome);
         template = template.replace(/\{\{CNPJPF\}\}/g, clienteCnpj);
@@ -480,20 +505,27 @@ document.addEventListener('DOMContentLoaded', () => {
         template = template.replace(/\{\{TOTAlMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORPAGAR\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorMTZ));
+        console.log('[REPLACE] Replacements completed');
 
         // Download the file
+        console.log('[DOWNLOAD] Creating blob and download link...');
         const blob = new Blob([template], { type: 'application/vnd.oasis.opendocument.text' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Conta_MTZ_${bill.referenceMonth.replace('/', '-')}.fodt`;
+        const fileName = `Conta_MTZ_${bill.referenceMonth.replace('/', '-')}.fodt`;
+        a.download = fileName;
+        console.log('[DOWNLOAD] File name:', fileName);
         a.click();
         URL.revokeObjectURL(url);
+        console.log('[DOWNLOAD] Download triggered!');
 
         generateDocBtn.textContent = 'Documento gerado!';
         setTimeout(() => generateDocBtn.textContent = 'Gerar Documento', 2000);
+        console.log('[SUCCESS] Document generation completed successfully!');
       } catch (err) {
-        console.error('Error generating document:', err);
+        console.error('[ERROR] Error generating document:', err);
+        console.error('[ERROR] Stack trace:', err.stack);
         alert('Erro ao gerar documento: ' + err.message);
       }
     });
