@@ -86,7 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function loadAccounts() {
+    console.log('[LOAD] Loading accounts from storage...');
     chrome.storage.local.get(['cemigAccounts'], (result) => {
+      console.log('[LOAD] Storage result:', result);
+      console.log('[LOAD] Accounts:', result.cemigAccounts);
       renderAccounts(result.cemigAccounts || []);
     });
   }
@@ -150,10 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAccounts(accounts) {
+    console.log('[RENDER] Rendering accounts, count:', accounts.length);
+    console.log('[RENDER] Accounts data:', accounts);
+    console.log('[RENDER] Account list element:', accountList);
+    
     accountList.innerHTML = accounts.length === 0
       ? '<p style="text-align:center; color:#888;">Nenhuma conta salva.</p>'
       : '';
     accounts.forEach(acc => {
+      console.log('[RENDER] Rendering account:', acc);
       const item = document.createElement('div');
       item.className = 'account-item';
       item.style.cursor = 'pointer';
