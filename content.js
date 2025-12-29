@@ -41,7 +41,7 @@ function fillCredentials(user, pass) {
 
     if (!passwordField) {
         console.log('Cemig Account Manager: Password field not found.');
-        alert('Campo de senha não encontrado na página.');
+        // Don't show alert - user might be on a different page
         return;
     }
 
@@ -75,6 +75,6 @@ function fillCredentials(user, pass) {
         console.log(`Cemig Account Manager: Autofilled for user ${user}`);
     } else {
         console.log('Cemig Account Manager: Could not identify both fields.');
-        alert('Não foi possível identificar os campos de login.');
+        // Don't show alert - user might be on a different page
     }
 }

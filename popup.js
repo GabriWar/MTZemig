@@ -191,9 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Trigger recalculation
         if (currentBillData) updateCalculations();
 
-        // Send autofill to page
+        // Send autofill to page (only if on Cemig domain)
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'fill_creds', user: acc.user, pass: acc.pass });
+          if (tabs[0] && tabs[0].url && 
+              (tabs[0].url.includes('atende.cemig.com.br') || 
+               tabs[0].url.includes('atendimento.cemig.com.br'))) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'fill_creds', user: acc.user, pass: acc.pass });
+          }
         });
       });
 
