@@ -17,3 +17,22 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
     }
   }
 });
+
+// Listen for messages from content script and relay to side panel/popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[BACKGROUND] Message received:', message);
+
+  if (message.action === 'NEW_BILL_DATA_CAPTURED') {
+    console.log('[BACKGROUND] New bill data captured, notifying all contexts');
+
+    // Broadcast to all extension contexts (including side panel)
+    chrome.runtime.sendMessage({
+      action: 'RELOAD_BILL_DATA'
+    }).catch(err => {
+      console.log('[BACKGROUND] No active contexts to notify:', err);
+    });
+  }
+
+  sendResponse({ status: 'ok' });
+  return true; // Keep message channel open for async response
+});

@@ -42,6 +42,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Listen for runtime messages from background script
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('[POPUP] Message received:', message);
+
+    if (message.action === 'RELOAD_BILL_DATA') {
+      console.log('[POPUP] Reloading bill data from background notification');
+      loadCapturedData();
+    }
+
+    sendResponse({ status: 'ok' });
+    return true;
+  });
+
   // Search accounts
   searchAccountsInput?.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();

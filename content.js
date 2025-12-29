@@ -18,6 +18,13 @@ window.addEventListener('message', (event) => {
                     console.log('Cemig Account Manager: Extension was reloaded, refresh the page.');
                 } else {
                     console.log('Cemig Account Manager: Bill data saved to storage.');
+
+                    // Send message to background to notify popup
+                    chrome.runtime.sendMessage({
+                        action: 'NEW_BILL_DATA_CAPTURED'
+                    }).catch(err => {
+                        console.log('Could not notify popup:', err);
+                    });
                 }
             });
         } catch (e) {
