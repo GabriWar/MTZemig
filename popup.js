@@ -465,63 +465,63 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!debugInfo) return;
 
     const debugText = `
-╔═══════════════════════════════════════════════════════════════╗
-║                    DEBUG - CÁLCULOS MTZ                       ║
-╚═══════════════════════════════════════════════════════════════╝
+===============================================================
+                    DEBUG - CALCULOS MTZ                       
+===============================================================
 
-📊 DADOS EXTRAÍDOS DA FATURA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  • Tarifa B1:              R$ ${formatCurrency(extracted.tarifaB1)}
-  • Consumo GD:             ${extracted.consumoGD.toLocaleString('pt-BR')} kWh
-  • Iluminação Pública:     R$ ${formatCurrency(extracted.iluminacaoPublica)}
-  • Multas/Cobranças:       R$ ${formatCurrency(extracted.multas)}
-  • Valor Conta CEMIG:      R$ ${formatCurrency(extracted.valorConta)}
+DADOS EXTRAIDOS DA FATURA:
+---------------------------------------------------------------
+  - Tarifa B1:              R$ ${formatCurrency(extracted.tarifaB1)}
+  - Consumo GD:             ${extracted.consumoGD.toLocaleString('pt-BR')} kWh
+  - Iluminacao Publica:     R$ ${formatCurrency(extracted.iluminacaoPublica)}
+  - Multas/Cobrancas:       R$ ${formatCurrency(extracted.multas)}
+  - Valor Conta CEMIG:      R$ ${formatCurrency(extracted.valorConta)}
 
-⚙️  PARÂMETROS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  • Desconto MTZ:           ${descontoPercent}%
+PARAMETROS:
+---------------------------------------------------------------
+  - Desconto MTZ:           ${descontoPercent}%
 
-🔢 FÓRMULAS E CÁLCULOS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMULAS E CALCULOS:
+---------------------------------------------------------------
 
-1️⃣  VALOR ENERGIA (sem desconto):
-    = Tarifa B1 × Consumo GD
-    = ${formatCurrency(calc.tarifa)} × ${calc.consumo.toLocaleString('pt-BR')}
+[1] VALOR ENERGIA (sem desconto):
+    = Tarifa B1 x Consumo GD
+    = ${formatCurrency(calc.tarifa)} x ${calc.consumo.toLocaleString('pt-BR')}
     = R$ ${formatCurrency(calc.valorEnergia)}
 
-2️⃣  TOTAL SEM MTZ (quanto pagaria sem desconto):
-    = Valor Energia + Iluminação + Multas
+[2] TOTAL SEM MTZ (quanto pagaria sem desconto):
+    = Valor Energia + Iluminacao + Multas
     = ${formatCurrency(calc.valorEnergia)} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
     = R$ ${formatCurrency(calc.totalSemMTZ)}
 
-3️⃣  VALOR CHEIO (com desconto MTZ):
-    = (Valor Energia × (1 - ${descontoPercent}%)) + Iluminação + Multas
-    = (${formatCurrency(calc.valorEnergia)} × ${(1 - descontoPercent/100).toFixed(2)}) + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+[3] VALOR CHEIO (com desconto MTZ):
+    = (Valor Energia x (1 - ${descontoPercent}%)) + Iluminacao + Multas
+    = (${formatCurrency(calc.valorEnergia)} x ${(1 - descontoPercent/100).toFixed(2)}) + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
     = ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
     = R$ ${formatCurrency(calc.valorCheio)}
 
-4️⃣  VALOR MTZ (a pagar para MTZ):
+[4] VALOR MTZ (a pagar para MTZ):
     = Valor Cheio - Conta CEMIG
     = ${formatCurrency(calc.valorCheio)} - ${formatCurrency(calc.valorConta)}
     = R$ ${formatCurrency(calc.valorMTZ)}
 
-5️⃣  ECONOMIA (quanto economizou):
+[5] ECONOMIA (quanto economizou):
     = Total Sem MTZ - Valor Cheio
     = ${formatCurrency(calc.totalSemMTZ)} - ${formatCurrency(calc.valorCheio)}
     = R$ ${formatCurrency(calc.economia)}
 
-💰 RESUMO FINAL:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  📌 Pagaria sem MTZ:       R$ ${formatCurrency(calc.totalSemMTZ)}
-  📌 Total a pagar:         R$ ${formatCurrency(calc.valorCheio)}
-  📌 Conta CEMIG:           R$ ${formatCurrency(calc.valorConta)}
-  📌 Valor MTZ:             R$ ${formatCurrency(calc.valorMTZ)}
-  📌 Economia:              R$ ${formatCurrency(calc.economia)}
+RESUMO FINAL:
+---------------------------------------------------------------
+  > Pagaria sem MTZ:       R$ ${formatCurrency(calc.totalSemMTZ)}
+  > Total a pagar:         R$ ${formatCurrency(calc.valorCheio)}
+  > Conta CEMIG:           R$ ${formatCurrency(calc.valorConta)}
+  > Valor MTZ:             R$ ${formatCurrency(calc.valorMTZ)}
+  > Economia:              R$ ${formatCurrency(calc.economia)}
 
-✅ Verificação:
+VERIFICACAO:
    Conta CEMIG + Valor MTZ = Valor Cheio
    ${formatCurrency(calc.valorConta)} + ${formatCurrency(calc.valorMTZ)} = ${formatCurrency(calc.valorConta + calc.valorMTZ)}
-   ${formatCurrency(calc.valorCheio)} = ${formatCurrency(calc.valorCheio)} ✓
+   ${formatCurrency(calc.valorCheio)} = ${formatCurrency(calc.valorCheio)} OK
 `;
 
     debugInfo.textContent = debugText;
