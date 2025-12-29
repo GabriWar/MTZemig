@@ -107,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
       endereco: document.getElementById('acc-endereco')?.value.trim() || '',
       instalacao: document.getElementById('acc-instalacao')?.value.trim() || '',
       tipoLigacao: document.getElementById('acc-tipo')?.value || '100',
-      desconto: document.getElementById('acc-desconto')?.value || '30'
+      desconto: document.getElementById('acc-desconto')?.value || '30',
+      diaVencimento: document.getElementById('acc-vencimento')?.value || ''
     };
 
     saveAccount(accountData);
@@ -179,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('acc-instalacao').value = account.instalacao || '';
     document.getElementById('acc-tipo').value = account.tipoLigacao || '100';
     document.getElementById('acc-desconto').value = account.desconto || '30';
+    document.getElementById('acc-vencimento').value = account.diaVencimento || '';
     
     // Show form
     addForm.classList.remove('hidden');
@@ -263,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('acc-instalacao').value = '';
     document.getElementById('acc-tipo').value = '100';
     document.getElementById('acc-desconto').value = '30';
+    document.getElementById('acc-vencimento').value = '';
   }
 
   function loadCapturedData() {
@@ -586,9 +589,20 @@ VERIFICACAO:
       const nInstalacao = selectedAccount.instalacao || '';
       console.log('[CUSTOMER] Nome:', clienteNome, 'CNPJ:', clienteCnpj);
 
-      // Format date
-      const dueDate = new Date(bill.dueDate);
-      const vencStr = dueDate.toLocaleDateString('pt-BR');
+      // Format date - using configured due day + current month/year
+      let vencStr = '';
+      if (selectedAccount.diaVencimento) {
+        const hoje = new Date();
+        const dia = parseInt(selectedAccount.diaVencimento);
+        const mes = hoje.getMonth(); // 0-11
+        const ano = hoje.getFullYear();
+        const dataVenc = new Date(ano, mes, dia);
+        vencStr = dataVenc.toLocaleDateString('pt-BR');
+      } else {
+        // Fallback to bill due date if no day configured
+        const dueDate = new Date(bill.dueDate);
+        vencStr = dueDate.toLocaleDateString('pt-BR');
+      }
       console.log('[DATE] Due date:', vencStr);
 
       try {
