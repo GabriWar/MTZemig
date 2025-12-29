@@ -680,7 +680,10 @@ VERIFICACAO:
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const fileName = `Conta_MTZ_${bill.referenceMonth.replace('/', '-')}.fodt`;
+
+        // Sanitize client name for filename (remove invalid characters)
+        const sanitizedName = clienteNome.replace(/[/\\?%*:|"<>]/g, '-').trim();
+        const fileName = `${sanitizedName}_${nInstalacao}_${bill.referenceMonth.replace('/', '-')}.fodt`;
         a.download = fileName;
         console.log('[DOWNLOAD] File name:', fileName);
         a.click();
