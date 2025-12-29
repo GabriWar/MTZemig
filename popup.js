@@ -34,6 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setupGenerateDocument();
   setupImportExport();
 
+  // Listen for storage changes to auto-update when new bill data is captured
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.lastCapturedBill) {
+      console.log('[STORAGE] New bill data detected, reloading...');
+      loadCapturedData();
+    }
+  });
+
   // Search accounts
   searchAccountsInput?.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
