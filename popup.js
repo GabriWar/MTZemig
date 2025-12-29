@@ -525,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
         template = template.replace(/\{\{TOTAlMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORPAGAR\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorMTZ));
+        template = template.replace(/\{\{ECONOMIZOU\}\}/g, 'R$ ' + formatCurrency(calc.economia));
         console.log('[REPLACE] Replacements completed');
 
         // Download the file
