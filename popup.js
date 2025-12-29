@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const capturedSection = document.getElementById('captured-data-section');
   const copyJsonBtn = document.getElementById('copy-json-btn');
+  const toggleJsonBtn = document.getElementById('toggle-json-btn');
+  const jsonView = document.getElementById('json-view');
   const descontoInput = document.getElementById('desconto');
   const tipoLigacaoSelect = document.getElementById('tipo-ligacao');
   const generateDocBtn = document.getElementById('generate-doc-btn');
@@ -34,6 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   tipoLigacaoSelect?.addEventListener('change', () => {
     if (currentBillData) updateCalculations();
+  });
+
+  toggleJsonBtn?.addEventListener('click', () => {
+    if (jsonView) {
+      jsonView.classList.toggle('hidden');
+    }
   });
 
   copyJsonBtn?.addEventListener('click', () => {

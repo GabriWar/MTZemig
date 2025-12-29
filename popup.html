@@ -16,7 +16,14 @@
     <div id="captured-data-section" class="hidden">
       <div class="section-header">
         <h3>Dados da Fatura</h3>
-        <button id="copy-json-btn" class="btn-small" title="Copiar JSON">Copiar</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="toggle-json-btn" class="btn-small" title="Ver/Ocultar JSON">JSON</button>
+          <button id="copy-json-btn" class="btn-small" title="Copiar JSON">Copiar</button>
+        </div>
+      </div>
+
+      <div id="json-view" class="hidden" style="margin-bottom: 12px;">
+        <pre id="json-full" style="white-space: pre-wrap; word-wrap: break-word; background: rgba(0, 0, 0, 0.3); padding: 8px; border-radius: 4px; font-size: 9px; max-height: 200px; overflow-y: auto; color: #aaa;"></pre>
       </div>
 
       <div class="bill-header" id="bill-header"></div>
@@ -55,11 +62,6 @@
         </div>
         <button id="generate-doc-btn" class="btn success" disabled>Gerar Documento</button>
       </div>
-
-      <details class="json-details">
-        <summary>Ver JSON Completo</summary>
-        <pre id="json-full"></pre>
-      </details>
     </div>
 
     <!-- Account List -->
