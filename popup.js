@@ -330,9 +330,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // GD Account - show full calculations
+    const tarifaLabel = extracted.naoCompensadoTotalmente 
+      ? 'Tarifa B1 (não compensado totalmente)' 
+      : 'Tarifa B1';
+    
     document.getElementById('extracted-data').innerHTML = `
       <div class="data-item">
-        <span class="data-label" title="Custo de Disponibilidade / Fator">Tarifa B1</span>
+        <span class="data-label" title="Custo de Disponibilidade / Fator">${tarifaLabel}</span>
         <span class="data-value">${extracted.tarifaB1}</span>
       </div>
       <div class="data-item">
@@ -396,6 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let custoDisponibilidade = 0;
     let consumoGD = 0;
     let tarifaEnergia = 0;
+    let tarifaEnergiaEletrica = 0;
+    let naoCompensadoTotalmente = false;
 
     bill.billingData?.forEach(item => {
       const desc = item.description || '';
@@ -404,6 +410,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (desc.includes('Energia compensada GD')) {
         consumoGD = Math.abs(parseInt(item.quantity?.trim())) || 0;
+      }
+      if (desc.includes('Energia Elétrica')) {
+        tarifaEnergiaEletrica = parseFloat(item.price) || 0;
+        naoCompensadoTotalmente = true;
       }
       if (desc.includes('Energia Elétrica') || desc.includes('Energia SCEE')) {
         tarifaEnergia = parseFloat(item.price) || 0;
@@ -414,7 +424,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!consumoGD && bill.consumption) consumoGD = bill.consumption;
 
     const fator = parseInt(tipoLigacaoSelect?.value || '100');
-    const tarifaB1 = custoDisponibilidade / fator;
+    let tarifaB1 = custoDisponibilidade / fator;
+    
+    // Se não tem custo de disponibilidade, usa tarifa de energia elétrica
+    if (tarifaB1 === 0 && tarifaEnergiaEletrica > 0) {
+      tarifaB1 = tarifaEnergiaEletrica;
+    }
 
     const iluminacaoPublica = bill.comparativeBoard?.streetLighting || 0;
     const multas = bill.comparativeBoard?.fine || 0;
@@ -429,7 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
       iluminacaoPublica,
       multas,
       valorSemMTZ,
-      valorConta: bill.value
+      valorConta: bill.value,
+      naoCompensadoTotalmente
     };
   }
 
