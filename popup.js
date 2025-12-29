@@ -22,15 +22,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const importConfirmBtn = document.getElementById('import-confirm-btn');
   const importCancelBtn = document.getElementById('import-cancel-btn');
   const jsonImportTextarea = document.getElementById('json-import');
+  const searchAccountsInput = document.getElementById('search-accounts');
 
   let currentBillData = null;
   let editingUser = null; // Track which account is being edited
   let selectedAccount = null; // Track which account is selected for document generation
+  let allAccounts = []; // Store all accounts for filtering
 
   loadAccounts();
   loadCapturedData();
   setupGenerateDocument();
   setupImportExport();
+
+  // Search accounts
+  searchAccountsInput?.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const filtered = allAccounts.filter(acc => {
+      const searchText = `${acc.nome || ''} ${acc.user || ''} ${acc.cnpj || ''} ${acc.instalacao || ''}`.toLowerCase();
+      return searchText.includes(query);
+    });
+    renderAccounts(filtered);
+  });
 
   descontoInput?.addEventListener('input', () => {
     if (currentBillData) updateCalculations();
@@ -106,7 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(['cemigAccounts'], (result) => {
       console.log('[LOAD] Storage result:', result);
       console.log('[LOAD] Accounts:', result.cemigAccounts);
-      renderAccounts(result.cemigAccounts || []);
+      allAccounts = result.cemigAccounts || [];
+      renderAccounts(allAccounts);
     });
   }
 
@@ -130,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       chrome.storage.local.set({ cemigAccounts: accounts }, () => {
         editingUser = null; // Clear edit mode
+        if (searchAccountsInput) searchAccountsInput.value = ''; // Clear search
         loadAccounts();
         addForm.classList.add('hidden');
         showAddBtn.classList.remove('hidden');
@@ -142,7 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirm(`Remover conta ${user}?`)) {
       chrome.storage.local.get(['cemigAccounts'], (result) => {
         const newAccounts = (result.cemigAccounts || []).filter(a => a.user !== user);
-        chrome.storage.local.set({ cemigAccounts: newAccounts }, loadAccounts);
+        chrome.storage.local.set({ cemigAccounts: newAccounts }, () => {
+          if (searchAccountsInput) searchAccountsInput.value = ''; // Clear search
+          loadAccounts();
+        });
       });
     }
   }
@@ -219,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Show nome if available, otherwise just user
       const displayName = acc.nome || acc.user;
-      const subInfo = acc.nome ? acc.user : '••••••••';
+      const subInfo = acc.nome ? `${acc.user} / ${acc.pass}` : acc.pass;
 
       item.innerHTML = `
         <div class="account-info">
@@ -713,6 +730,7 @@ VERIFICACAO:
           });
 
           chrome.storage.local.set({ cemigAccounts: merged }, () => {
+            if (searchAccountsInput) searchAccountsInput.value = ''; // Clear search
             loadAccounts();
             importForm.classList.add('hidden');
             showAddBtn.classList.remove('hidden');
