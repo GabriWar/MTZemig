@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const capturedSection = document.getElementById('captured-data-section');
   const copyJsonBtn = document.getElementById('copy-json-btn');
   const toggleJsonBtn = document.getElementById('toggle-json-btn');
+  const toggleDebugBtn = document.getElementById('toggle-debug-btn');
   const jsonView = document.getElementById('json-view');
+  const debugView = document.getElementById('debug-view');
   const descontoInput = document.getElementById('desconto');
   const tipoLigacaoSelect = document.getElementById('tipo-ligacao');
   const generateDocBtn = document.getElementById('generate-doc-btn');
@@ -36,6 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   tipoLigacaoSelect?.addEventListener('change', () => {
     if (currentBillData) updateCalculations();
+  });
+
+  toggleDebugBtn?.addEventListener('click', () => {
+    if (debugView) {
+      debugView.classList.toggle('hidden');
+    }
   });
 
   toggleJsonBtn?.addEventListener('click', () => {
@@ -325,6 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const descontoPercent = parseFloat(descontoInput?.value || 30);
     const calc = calculateAll(extracted, bill.value, descontoPercent);
 
+    // Update debug view
+    updateDebugView(extracted, calc, descontoPercent);
+
     document.getElementById('summary-data').innerHTML = `
       <div class="data-item">
         <span class="data-label" title="CONSUMO × TARIFA + ILUMINAÇÃO + MULTA">Valor Sem MTZ</span>
@@ -447,6 +458,73 @@ document.addEventListener('DOMContentLoaded', () => {
     // Arredonda para cima com 2 casas decimais
     const rounded = Math.ceil(value * 100) / 100;
     return rounded.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function updateDebugView(extracted, calc, descontoPercent) {
+    const debugInfo = document.getElementById('debug-info');
+    if (!debugInfo) return;
+
+    const debugText = `
+╔═══════════════════════════════════════════════════════════════╗
+║                    DEBUG - CÁLCULOS MTZ                       ║
+╚═══════════════════════════════════════════════════════════════╝
+
+📊 DADOS EXTRAÍDOS DA FATURA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Tarifa B1:              R$ ${formatCurrency(extracted.tarifaB1)}
+  • Consumo GD:             ${extracted.consumoGD.toLocaleString('pt-BR')} kWh
+  • Iluminação Pública:     R$ ${formatCurrency(extracted.iluminacaoPublica)}
+  • Multas/Cobranças:       R$ ${formatCurrency(extracted.multas)}
+  • Valor Conta CEMIG:      R$ ${formatCurrency(extracted.valorConta)}
+
+⚙️  PARÂMETROS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Desconto MTZ:           ${descontoPercent}%
+
+🔢 FÓRMULAS E CÁLCULOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  VALOR ENERGIA (sem desconto):
+    = Tarifa B1 × Consumo GD
+    = ${formatCurrency(calc.tarifa)} × ${calc.consumo.toLocaleString('pt-BR')}
+    = R$ ${formatCurrency(calc.valorEnergia)}
+
+2️⃣  TOTAL SEM MTZ (quanto pagaria sem desconto):
+    = Valor Energia + Iluminação + Multas
+    = ${formatCurrency(calc.valorEnergia)} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+    = R$ ${formatCurrency(calc.totalSemMTZ)}
+
+3️⃣  VALOR CHEIO (com desconto MTZ):
+    = (Valor Energia × (1 - ${descontoPercent}%)) + Iluminação + Multas
+    = (${formatCurrency(calc.valorEnergia)} × ${(1 - descontoPercent/100).toFixed(2)}) + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+    = ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+    = R$ ${formatCurrency(calc.valorCheio)}
+
+4️⃣  VALOR MTZ (a pagar para MTZ):
+    = Valor Cheio - Conta CEMIG
+    = ${formatCurrency(calc.valorCheio)} - ${formatCurrency(calc.valorConta)}
+    = R$ ${formatCurrency(calc.valorMTZ)}
+
+5️⃣  ECONOMIA (quanto economizou):
+    = Total Sem MTZ - Valor Cheio
+    = ${formatCurrency(calc.totalSemMTZ)} - ${formatCurrency(calc.valorCheio)}
+    = R$ ${formatCurrency(calc.economia)}
+
+💰 RESUMO FINAL:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📌 Pagaria sem MTZ:       R$ ${formatCurrency(calc.totalSemMTZ)}
+  📌 Total a pagar:         R$ ${formatCurrency(calc.valorCheio)}
+  📌 Conta CEMIG:           R$ ${formatCurrency(calc.valorConta)}
+  📌 Valor MTZ:             R$ ${formatCurrency(calc.valorMTZ)}
+  📌 Economia:              R$ ${formatCurrency(calc.economia)}
+
+✅ Verificação:
+   Conta CEMIG + Valor MTZ = Valor Cheio
+   ${formatCurrency(calc.valorConta)} + ${formatCurrency(calc.valorMTZ)} = ${formatCurrency(calc.valorConta + calc.valorMTZ)}
+   ${formatCurrency(calc.valorCheio)} = ${formatCurrency(calc.valorCheio)} ✓
+`;
+
+    debugInfo.textContent = debugText;
   }
 
   function setupGenerateDocument() {
