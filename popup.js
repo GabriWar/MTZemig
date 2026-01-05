@@ -37,17 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for storage changes to auto-update when new bill data is captured
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes.lastCapturedBill) {
-      console.log('[STORAGE] New bill data detected, reloading...');
+
       loadCapturedData();
     }
   });
 
   // Listen for runtime messages from background script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('[POPUP] Message received:', message);
+
 
     if (message.action === 'RELOAD_BILL_DATA') {
-      console.log('[POPUP] Reloading bill data from background notification');
+
       loadCapturedData();
     }
 
@@ -74,8 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   toggleDebugBtn?.addEventListener('click', () => {
+    console.log('[DEBUG BUTTON] Clicked, debugView:', debugView);
     if (debugView) {
+      const wasHidden = debugView.classList.contains('hidden');
       debugView.classList.toggle('hidden');
+      console.log('[DEBUG BUTTON] Toggle complete, was hidden:', wasHidden, 'now hidden:', debugView.classList.contains('hidden'));
     }
   });
 
@@ -136,10 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function loadAccounts() {
-    console.log('[LOAD] Loading accounts from storage...');
     chrome.storage.local.get(['cemigAccounts'], (result) => {
-      console.log('[LOAD] Storage result:', result);
-      console.log('[LOAD] Accounts:', result.cemigAccounts);
       allAccounts = result.cemigAccounts || [];
       renderAccounts(allAccounts);
     });
@@ -209,15 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAccounts(accounts) {
-    console.log('[RENDER] Rendering accounts, count:', accounts.length);
-    console.log('[RENDER] Accounts data:', accounts);
-    console.log('[RENDER] Account list element:', accountList);
-    
     accountList.innerHTML = accounts.length === 0
       ? '<p style="text-align:center; color:#888;">Nenhuma conta salva.</p>'
       : '';
     accounts.forEach(acc => {
-      console.log('[RENDER] Rendering account:', acc);
+
       const item = document.createElement('div');
       item.className = 'account-item';
       item.style.cursor = 'pointer';
@@ -305,7 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateCalculations() {
+    console.log('[UPDATE CALCULATIONS] Called, currentBillData:', currentBillData);
     const bill = currentBillData.data.billDetails.bills[0];
+    console.log('[UPDATE CALCULATIONS] Bill extracted:', bill);
 
     // Header
     document.getElementById('bill-header').innerHTML = `
@@ -318,9 +316,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Check if it's a GD account
     const isGD = checkIfGD(bill);
+    console.log('[UPDATE CALCULATIONS] isGD:', isGD);
     const extracted = extractBillData(bill);
+    console.log('[UPDATE CALCULATIONS] extracted:', extracted);
 
     if (!isGD) {
+      console.log('[UPDATE CALCULATIONS] NOT a GD account - returning early');
       // Not a GD account - show message
       document.getElementById('extracted-data').innerHTML = `
         <div class="data-item full-width">
@@ -376,14 +377,25 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="data-label" title="Juros, multas e cobranças">Multas/Cobranças</span>
         <span class="data-value">R$ ${formatCurrency(extracted.multas)}</span>
       </div>
+      ${extracted._debug.temEncargosExtras ? `
+      <div class="data-item" style="background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 4px;">
+        <span style="color: #856404; font-size: 12px;">⚠️ Favor verificar se os encargos extras (R$ ${formatCurrency(extracted._debug.diferencaResidual)}) da conta estão corretos</span>
+      </div>
+      ` : ''}
+      ${extracted._debug.temErroCalculo ? `
+      <div class="data-item" style="background: #f8d7da; border-left: 3px solid #dc3545; padding: 8px; margin-top: 4px;">
+        <span style="color: #721c24; font-size: 12px;">❌ ERRO: Diferença residual negativa (R$ ${formatCurrency(extracted._debug.diferencaResidualReal)}). Verifique os dados.</span>
+      </div>
+      ` : ''}
     `;
 
     // Usar função centralizada de cálculo
     const descontoPercent = parseFloat(descontoInput?.value || 30);
     const calc = calculateAll(extracted, bill.value, descontoPercent);
 
-    // Update debug view
-    updateDebugView(extracted, calc, descontoPercent);
+    // Update debug view (passar bill também para mostrar dados brutos)
+    console.log('[UPDATE CALCULATIONS] About to call updateDebugView with:', { extracted, calc, descontoPercent, bill });
+    updateDebugView(extracted, calc, descontoPercent, bill);
 
     document.getElementById('summary-data').innerHTML = `
       <div class="data-item">
@@ -457,9 +469,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const iluminacaoPublica = bill.comparativeBoard?.streetLighting || 0;
-    const multas = bill.comparativeBoard?.fine || 0;
+    
+    // Calcular multas incluindo correções não explícitas (IPCA/IGPM)
+    const multasOficiais = bill.comparativeBoard?.fine || 0;
+    
+    // Calcular composition total com arredondamento intermediário para evitar erros de precisão
+    let compositionTotal = 0;
+    if (bill.composition) {
+      for (const item of bill.composition) {
+        compositionTotal += (item.value || 0);
+      }
+      // Arredondar para 2 casas decimais
+      compositionTotal = Math.round(compositionTotal * 100) / 100;
+    }
+    
+    // Diferença residual inclui correção IPCA/IGPM e outros ajustes não explícitos
+    const diferencaResidualBruta = bill.value - (compositionTotal + iluminacaoPublica + multasOficiais);
+    // Arredondar para 2 casas decimais para evitar erros de precisão de ponto flutuante
+    const diferencaResidual = Math.round(diferencaResidualBruta * 100) / 100;
+    
+    // Multas totais = multas oficiais + diferença residual (se positiva)
+    const multas = multasOficiais + Math.max(0, diferencaResidual);
+    
+
 
     const valorSemMTZ = (tarifaB1 * consumoGD) + iluminacaoPublica + multas;
+
+    // Extrair composition items para debug detalhado
+    const compositionItems = {};
+    if (bill.composition) {
+      for (const item of bill.composition) {
+        // Normalizar nomes removendo acentos
+        const key = item.description
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, '');
+        compositionItems[key] = item.value || 0;
+      }
+    }
 
     return {
       tarifaB1,
@@ -470,7 +517,17 @@ document.addEventListener('DOMContentLoaded', () => {
       multas,
       valorSemMTZ,
       valorConta: bill.value,
-      naoCompensadoTotalmente
+      naoCompensadoTotalmente,
+      // Debug info e flags de aviso
+      _debug: {
+        multasOficiais,
+        compositionTotal,
+        compositionItems,
+        diferencaResidual: Math.max(0, diferencaResidual),
+        diferencaResidualReal: diferencaResidual, // Pode ser negativa
+        temEncargosExtras: diferencaResidual > 0.01,
+        temErroCalculo: diferencaResidual < -0.01
+      }
     };
   }
 
@@ -516,119 +573,457 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function formatCurrency(value) {
     if (value === null || value === undefined || isNaN(value)) return '0,00';
-    // Arredonda para cima com 2 casas decimais
-    const rounded = Math.ceil(value * 100) / 100;
+    // Arredonda para 2 casas decimais (padrão: 0.5 arredonda para cima)
+    const rounded = Math.round(value * 100) / 100;
     return rounded.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function updateDebugView(extracted, calc, descontoPercent) {
+  function updateDebugView(extracted, calc, descontoPercent, bill) {
+    console.log('[DEBUG VIEW] Function called', { extracted, calc, descontoPercent, bill });
     const debugInfo = document.getElementById('debug-info');
-    if (!debugInfo) return;
+    console.log('[DEBUG VIEW] Element found:', debugInfo);
+    if (!debugInfo) {
+      console.error('[DEBUG VIEW] Element debug-info not found!');
+      return;
+    }
+
+    try {
+
+    // Coletar dados brutos do billingData para mostrar origem
+    const billingDataInfo = {};
+    bill.billingData?.forEach(item => {
+      billingDataInfo[item.description] = {
+        price: item.price,
+        quantity: item.quantity?.trim(),
+        amount: item.amount
+      };
+    });
+
+    // Fator de ligação usado
+    const fator = parseInt(tipoLigacaoSelect?.value || '100');
+    const tipoLigacaoLabel = fator === 100 ? 'Monofásico' : fator === 50 ? 'Bifásico' : 'Trifásico';
 
     const debugText = `
 ===============================================================
                     DEBUG - CALCULOS MTZ                       
 ===============================================================
 
-DADOS EXTRAIDOS DA FATURA:
+ORIGEM DOS DADOS (API CEMIG):
+===============================================================
+
+1. DADOS DA FATURA (bill object):
 ---------------------------------------------------------------
-  - Tarifa B1:              R$ ${formatCurrency(extracted.tarifaB1)}
-  - Consumo GD:             ${extracted.consumoGD.toLocaleString('pt-BR')} kWh
-  - Iluminacao Publica:     R$ ${formatCurrency(extracted.iluminacaoPublica)}
-  - Multas/Cobrancas:       R$ ${formatCurrency(extracted.multas)}
-  - Valor Conta CEMIG:      R$ ${formatCurrency(extracted.valorConta)}
+   Fonte: bill.value
+   Valor Total da Conta:     R$ ${formatCurrency(bill.value)}
+   
+   Fonte: bill.referenceMonth
+   Mês de Referência:        ${bill.referenceMonth}
+   
+   Fonte: bill.consumption
+   Consumo Total Medido:     ${bill.consumption} kWh
 
-PARAMETROS:
+2. DADOS DO billingData (itens individuais):
 ---------------------------------------------------------------
-  - Desconto MTZ:           ${descontoPercent}%
+${Object.entries(billingDataInfo).map(([desc, data]) => `   ${desc}:
+   • Quantidade: ${data.quantity || 'N/A'}
+   • Preço Unit: ${data.price || 'N/A'}
+   • Valor: R$ ${formatCurrency(parseFloat(data.amount) || 0)}`).join('\n')}
 
-FORMULAS E CALCULOS:
+3. DADOS DO comparativeBoard:
 ---------------------------------------------------------------
+   Fonte: bill.comparativeBoard.streetLighting
+   Iluminação Pública:       R$ ${formatCurrency(bill.comparativeBoard?.streetLighting || 0)}
+   
+   Fonte: bill.comparativeBoard.fine
+   Multas Oficiais:          R$ ${formatCurrency(bill.comparativeBoard?.fine || 0)}
+   
+   Fonte: bill.comparativeBoard.icms
+   ICMS:                     R$ ${formatCurrency(bill.comparativeBoard?.icms || 0)}
 
-[1] VALOR ENERGIA (sem desconto):
-    = Tarifa B1 x Consumo GD
-    = ${formatCurrency(calc.tarifa)} x ${calc.consumo.toLocaleString('pt-BR')}
-    = R$ ${formatCurrency(calc.valorEnergia)}
-
-[2] TOTAL SEM MTZ (quanto pagaria sem desconto):
-    = Valor Energia + Iluminacao + Multas
-    = ${formatCurrency(calc.valorEnergia)} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
-    = R$ ${formatCurrency(calc.totalSemMTZ)}
-
-[3] VALOR CHEIO (com desconto MTZ):
-    = (Valor Energia x (1 - ${descontoPercent}%)) + Iluminacao + Multas
-    = (${formatCurrency(calc.valorEnergia)} x ${(1 - descontoPercent/100).toFixed(2)}) + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
-    = ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
-    = R$ ${formatCurrency(calc.valorCheio)}
-
-[4] VALOR MTZ (a pagar para MTZ):
-    = Valor Cheio - Conta CEMIG
-    = ${formatCurrency(calc.valorCheio)} - ${formatCurrency(calc.valorConta)}
-    = R$ ${formatCurrency(calc.valorMTZ)}
-
-[5] ECONOMIA (quanto economizou):
-    = Total Sem MTZ - Valor Cheio
-    = ${formatCurrency(calc.totalSemMTZ)} - ${formatCurrency(calc.valorCheio)}
-    = R$ ${formatCurrency(calc.economia)}
-
-RESUMO FINAL:
+4. COMPOSIÇÃO DA FATURA (bill.composition):
 ---------------------------------------------------------------
-  > Pagaria sem MTZ:       R$ ${formatCurrency(calc.totalSemMTZ)}
-  > Total a pagar:         R$ ${formatCurrency(calc.valorCheio)}
-  > Conta CEMIG:           R$ ${formatCurrency(calc.valorConta)}
-  > Valor MTZ:             R$ ${formatCurrency(calc.valorMTZ)}
-  > Economia:              R$ ${formatCurrency(calc.economia)}
+${bill.composition?.map(item => `   ${item.description.padEnd(20)} R$ ${formatCurrency(item.value || 0).padStart(10)} (${item.percentValue})`).join('\n')}
+   --------------------------------------------------------------
+   SUBTOTAL:                 R$ ${formatCurrency(extracted._debug.compositionTotal)}
 
-VERIFICACAO:
-   Conta CEMIG + Valor MTZ = Valor Cheio
-   ${formatCurrency(calc.valorConta)} + ${formatCurrency(calc.valorMTZ)} = ${formatCurrency(calc.valorConta + calc.valorMTZ)}
-   ${formatCurrency(calc.valorCheio)} = ${formatCurrency(calc.valorCheio)} OK
+===============================================================
+               PROCESSAMENTO E CALCULOS
+===============================================================
+
+PASSO 1: EXTRAÇÃO DA TARIFA B1
+---------------------------------------------------------------
+   Fonte: billingData["Custo de Disponibilidade"]
+   Custo de Disponibilidade: R$ ${formatCurrency(extracted.custoDisponibilidade)}
+   
+   Parâmetro: Tipo de Ligação
+   Tipo Selecionado:         ${tipoLigacaoLabel}
+   Fator:                    ${fator}
+   
+   Cálculo: Tarifa B1 = Custo Disp. / Fator
+   Tarifa B1 = ${formatCurrency(extracted.custoDisponibilidade)} / ${fator}
+   Tarifa B1 = R$ ${formatCurrency(extracted.tarifaB1)}
+
+PASSO 2: EXTRAÇÃO DO CONSUMO GD
+---------------------------------------------------------------
+   Fonte: billingData["Energia compensada GD II"]
+   Consumo GD Compensado:    ${extracted.consumoGD} kWh
+
+PASSO 3: EXTRAÇÃO DE ILUMINAÇÃO PÚBLICA
+---------------------------------------------------------------
+   Fonte: bill.comparativeBoard.streetLighting
+   Iluminação Pública:       R$ ${formatCurrency(extracted.iluminacaoPublica)}
+
+PASSO 4: CÁLCULO DAS MULTAS TOTAIS
+---------------------------------------------------------------
+   4.1) Multas Oficiais (API):
+        Fonte: bill.comparativeBoard.fine
+        Valor: R$ ${formatCurrency(extracted._debug.multasOficiais)}
+   
+   4.2) Cálculo de Demais Encargos:
+        Soma da Composição: R$ ${formatCurrency(extracted._debug.compositionTotal)}
+        
+        Cálculo: Demais = Total - (Composition + Ilum + Multas)
+                       = ${formatCurrency(bill.value)} - (${formatCurrency(extracted._debug.compositionTotal)} + ${formatCurrency(extracted.iluminacaoPublica)} + ${formatCurrency(extracted._debug.multasOficiais)})
+                       = ${formatCurrency(bill.value)} - ${formatCurrency(extracted._debug.compositionTotal + extracted.iluminacaoPublica + extracted._debug.multasOficiais)}
+                       = R$ ${formatCurrency(extracted._debug.diferencaResidual)}${extracted._debug.diferencaResidual > 0.01 ? ' ⚠️' : ''}
+   
+   4.3) Multas Totais:
+        = Multas Oficiais + Demais Encargos
+        = ${formatCurrency(extracted._debug.multasOficiais)} + ${formatCurrency(extracted._debug.diferencaResidual)}
+        = R$ ${formatCurrency(extracted.multas)}
+
+${extracted._debug.diferencaResidual > 0.01 ? `
+   ⚠️  NOTA IMPORTANTE:
+   Os "Demais encargos" (R$ ${formatCurrency(extracted._debug.diferencaResidual)}) representam valores não
+   discriminados pela API CEMIG, incluindo:
+   - Juros de mora (1% ao mês)
+   - Multa de atraso (2%)
+   - Correção monetária (IPCA/IGPM)
+   - Outras taxas administrativas
+` : ''}
+
+===============================================================
+          CÁLCULOS MTZ - PASSO A PASSO DETALHADO
+===============================================================
+
+PARÂMETROS DE CÁLCULO:
+---------------------------------------------------------------
+  • Desconto MTZ:           ${descontoPercent}%
+  • Tipo de Ligação:        ${tipoLigacaoLabel} (fator ${fator})
+  • Arredondamento:         Math.round (2 casas decimais)
+  • Modo de cálculo:        Precisão mantida em todas etapas
+
+---------------------------------------------------------------
+PASSO 5: VALOR DA ENERGIA (sem desconto MTZ)
+---------------------------------------------------------------
+   Fórmula: Valor Energia = Tarifa B1 × Consumo GD
+   
+   Cálculo:
+   = ${formatCurrency(calc.tarifa)} × ${calc.consumo.toLocaleString('pt-BR')} kWh
+   = R$ ${formatCurrency(calc.valorEnergia)}
+   
+   Significado: Este é o valor que você pagaria APENAS pela 
+                energia compensada pela GD, SEM o desconto MTZ.
+
+---------------------------------------------------------------
+PASSO 6: TOTAL SEM MTZ (quanto pagaria sem desconto)
+---------------------------------------------------------------
+   Fórmula: Total = Valor Energia + Iluminação + Multas
+   
+   Componentes:
+   • Valor Energia:          R$ ${formatCurrency(calc.valorEnergia)}
+   • Iluminação Pública:     R$ ${formatCurrency(calc.iluminacao)}
+   • Multas/Cobranças:       R$ ${formatCurrency(calc.multa)}
+   
+   Cálculo:
+   = ${formatCurrency(calc.valorEnergia)} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+   = R$ ${formatCurrency(calc.totalSemMTZ)}
+   
+   Significado: Este seria o valor TOTAL da conta se você NÃO
+                tivesse o desconto da MTZ.
+
+---------------------------------------------------------------
+PASSO 7: APLICAÇÃO DO DESCONTO MTZ
+---------------------------------------------------------------
+   7.1) Cálculo do Desconto Percentual:
+        Desconto Percentual = 1 - (${descontoPercent}% / 100)
+                            = 1 - ${(descontoPercent/100).toFixed(2)}
+                            = ${(1 - descontoPercent/100).toFixed(2)}
+   
+   7.2) Valor da Energia COM Desconto:
+        = Valor Energia × Fator de Desconto
+        = ${formatCurrency(calc.valorEnergia)} × ${(1 - descontoPercent/100).toFixed(2)}
+        = R$ ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))}
+   
+   ⚠️  IMPORTANTE: O desconto MTZ se aplica APENAS à energia!
+                   Iluminação e Multas NÃO recebem desconto.
+
+---------------------------------------------------------------
+PASSO 8: VALOR CHEIO (total a pagar com MTZ)
+---------------------------------------------------------------
+   Fórmula: Valor Cheio = Energia Descontada + Ilum + Multas
+   
+   Componentes:
+   • Energia c/ Desconto:    R$ ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))}
+   • Iluminação (sem desc):  R$ ${formatCurrency(calc.iluminacao)}
+   • Multas (sem desconto):  R$ ${formatCurrency(calc.multa)}
+   
+   Cálculo:
+   = ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))} + ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+   = R$ ${formatCurrency(calc.valorCheio)}
+   
+   Significado: Este é o valor TOTAL que você vai pagar 
+                (CEMIG + MTZ) COM o desconto.
+
+---------------------------------------------------------------
+PASSO 9: DIVISÃO DO PAGAMENTO (CEMIG vs MTZ)
+---------------------------------------------------------------
+   9.1) Conta CEMIG (já paga):
+        Fonte: bill.value
+        Valor: R$ ${formatCurrency(calc.valorConta)}
+   
+   9.2) Valor MTZ (a pagar para MTZ):
+        Fórmula: Valor MTZ = Valor Cheio - Conta CEMIG
+        
+        Cálculo:
+        = ${formatCurrency(calc.valorCheio)} - ${formatCurrency(calc.valorConta)}
+        = R$ ${formatCurrency(calc.valorMTZ)}
+   
+   ${calc.valorMTZ < 0 ? `   ⚠️  ATENÇÃO: Valor MTZ negativo!
+        Isso significa que a conta CEMIG (R$ ${formatCurrency(calc.valorConta)}) 
+        é MAIOR que o valor cheio com desconto (R$ ${formatCurrency(calc.valorCheio)}).
+        
+        Possíveis causas:
+        • Conta com multas/juros muito altos
+        • Consumo não totalmente compensado pela GD
+        • Outros encargos não previstos
+        • Custo de disponibilidade anormal` : `   ✅ Valor MTZ positivo - cliente paga à MTZ e economiza!`}
+
+---------------------------------------------------------------
+PASSO 10: ECONOMIA GERADA
+---------------------------------------------------------------
+   Fórmula: Economia = Total Sem MTZ - Valor Cheio
+   
+   Cálculo:
+   = ${formatCurrency(calc.totalSemMTZ)} - ${formatCurrency(calc.valorCheio)}
+   = R$ ${formatCurrency(calc.economia)}
+   
+   Percentual de Economia:
+   = (${formatCurrency(calc.economia)} / ${formatCurrency(calc.totalSemMTZ)}) × 100
+   = ${((calc.economia / calc.totalSemMTZ) * 100).toFixed(2)}%
+   
+   Significado: Este é o valor que o cliente ECONOMIZOU ao 
+                contratar a MTZ ao invés de pagar o valor cheio.
+
+===============================================================
+                    RESUMO FINAL
+===============================================================
+
+COMPARAÇÃO DE CENÁRIOS:
+---------------------------------------------------------------
+  Cenário 1 - SEM MTZ (hipotético):
+  • Valor Total:            R$ ${formatCurrency(calc.totalSemMTZ)}
+  • Pagaria à CEMIG:        R$ ${formatCurrency(calc.totalSemMTZ)}
+  
+  Cenário 2 - COM MTZ (real):
+  • Valor Total:            R$ ${formatCurrency(calc.valorCheio)}
+  • Paga à CEMIG:           R$ ${formatCurrency(calc.valorConta)}
+  • Paga à MTZ:             R$ ${formatCurrency(calc.valorMTZ)}
+  • Economia:               R$ ${formatCurrency(calc.economia)} (${((calc.economia / calc.totalSemMTZ) * 100).toFixed(2)}%)
+
+FLUXO DE PAGAMENTO:
+---------------------------------------------------------------
+  1️⃣  Cliente paga à CEMIG:  R$ ${formatCurrency(calc.valorConta)}
+  2️⃣  Cliente paga à MTZ:    R$ ${formatCurrency(calc.valorMTZ)}
+  ───────────────────────────────────────
+  💰 Total pago pelo cliente: R$ ${formatCurrency(calc.valorCheio)}
+  
+  ✅ Economia em relação ao valor sem desconto:
+     R$ ${formatCurrency(calc.totalSemMTZ)} - R$ ${formatCurrency(calc.valorCheio)} = R$ ${formatCurrency(calc.economia)}
+
+BREAKDOWN DOS VALORES:
+---------------------------------------------------------------
+  Energia (COM desconto ${descontoPercent}%):
+  • Base (sem desconto):    R$ ${formatCurrency(calc.valorEnergia)}
+  • Desconto aplicado:      R$ ${formatCurrency(calc.valorEnergia * (descontoPercent/100))}
+  • Valor final:            R$ ${formatCurrency(calc.valorEnergia * (1 - descontoPercent/100))}
+  
+  Valores SEM desconto:
+  • Iluminação Pública:     R$ ${formatCurrency(calc.iluminacao)}
+  • Multas/Cobranças:       R$ ${formatCurrency(calc.multa)}
+    ├─ Multas oficiais:     R$ ${formatCurrency(extracted._debug.multasOficiais)}
+    └─ Demais encargos:     R$ ${formatCurrency(extracted._debug.diferencaResidual)}
+
+===============================================================
+            TEMPLATE DOCUMENT (.fodt) - EXTRAVAL
+===============================================================
+
+O que é EXTRAVAL?
+---------------------------------------------------------------
+  EXTRAVAL é uma variável usada no documento gerado (.fodt)
+  que representa os valores que NÃO recebem desconto MTZ.
+  
+  Estes valores são somados à energia descontada para calcular
+  o valor total que o cliente deve pagar.
+
+Cálculo do EXTRAVAL:
+---------------------------------------------------------------
+  Fórmula: EXTRAVAL = Iluminação Pública + Multas Totais
+  
+  Componentes:
+  • Iluminação Pública:     R$ ${formatCurrency(calc.iluminacao)}
+  • Multas Totais:          R$ ${formatCurrency(calc.multa)}
+    ├─ Multas oficiais:     R$ ${formatCurrency(extracted._debug.multasOficiais)}
+    └─ Demais encargos:     R$ ${formatCurrency(extracted._debug.diferencaResidual)}
+  
+  Cálculo:
+  = ${formatCurrency(calc.iluminacao)} + ${formatCurrency(calc.multa)}
+  = R$ ${formatCurrency(calc.iluminacao + calc.multa)}
+  
+  ⚠️  Estes valores NÃO recebem o desconto de ${descontoPercent}% da MTZ!
+
+===============================================================
+                 VERIFICAÇÕES E VALIDAÇÕES
+===============================================================
+
+VERIFICAÇÃO MATEMÁTICA:
+---------------------------------------------------------------
+  Regra: Conta CEMIG + Valor MTZ = Valor Cheio
+  
+  Teste:
+  ${formatCurrency(calc.valorConta)} + (${formatCurrency(calc.valorMTZ)}) = ${formatCurrency(calc.valorConta + calc.valorMTZ)}
+  
+  Valor Cheio calculado: ${formatCurrency(calc.valorCheio)}
+  
+  ${Math.abs((calc.valorConta + calc.valorMTZ) - calc.valorCheio) < 0.01 ? '✅ VERIFICAÇÃO OK - Valores conferem!' : '❌ ERRO - Valores não conferem!'}
+
+VERIFICAÇÃO DE COMPONENTES:
+---------------------------------------------------------------
+  Total dos Componentes:
+  • Composition:            R$ ${formatCurrency(extracted._debug.compositionTotal)}
+  • Iluminação:             R$ ${formatCurrency(extracted.iluminacaoPublica)}
+  • Multas:                 R$ ${formatCurrency(extracted.multas)}
+  ───────────────────────────────────────
+  Soma:                     R$ ${formatCurrency(extracted._debug.compositionTotal + extracted.iluminacaoPublica + extracted.multas)}
+  
+  Valor da Conta (API):     R$ ${formatCurrency(bill.value)}
+  Diferença:                R$ ${formatCurrency(bill.value - (extracted._debug.compositionTotal + extracted.iluminacaoPublica + extracted.multas))}
+  
+  ${Math.abs(bill.value - (extracted._debug.compositionTotal + extracted.iluminacaoPublica + extracted.multas)) < 0.01 ? '✅ Valores conferem perfeitamente!' : `⚠️  Diferença detectada - incluída em "Demais encargos"`}
+
+${extracted._debug.temEncargosExtras ? `
+===============================================================
+       ⚠️  ATENÇÃO - ENCARGOS EXTRAS DETECTADOS
+===============================================================
+
+Valor detectado: R$ ${formatCurrency(extracted._debug.diferencaResidual)}
+
+O que são "Demais encargos"?
+---------------------------------------------------------------
+  São valores cobrados na fatura mas NÃO discriminados pela
+  API da CEMIG. Incluem:
+  
+  ✓ Multa por atraso (2% sobre o valor da conta)
+  ✓ Juros de mora (1% ao mês ou proporcional)
+  ✓ Correção monetária (IPCA/IGPM)
+  ✓ Taxas administrativas
+  ✓ Outros encargos não especificados
+
+Como são calculados?
+---------------------------------------------------------------
+  Fórmula: Demais = Total - (Composition + Ilum + Multas)
+  
+  Detalhamento:
+  1. Total da conta (API):  R$ ${formatCurrency(bill.value)}
+  2. Composition total:     R$ ${formatCurrency(extracted._debug.compositionTotal)}
+  3. Iluminação pública:    R$ ${formatCurrency(extracted.iluminacaoPublica)}
+  4. Multas oficiais:       R$ ${formatCurrency(extracted._debug.multasOficiais)}
+  
+  Diferença residual:
+  = ${formatCurrency(bill.value)} - (${formatCurrency(extracted._debug.compositionTotal)} + ${formatCurrency(extracted.iluminacaoPublica)} + ${formatCurrency(extracted._debug.multasOficiais)})
+  = R$ ${formatCurrency(extracted._debug.diferencaResidual)} ⚠️
+
+⚠️  AÇÃO REQUERIDA:
+  Por favor, verifique a fatura física/PDF para confirmar se
+  este valor corresponde a encargos de atraso ou outras taxas.
+
+` : ''}${extracted._debug.temErroCalculo ? `
+===============================================================
+           ❌ ERRO - DIFERENÇA RESIDUAL NEGATIVA
+===============================================================
+
+Valor detectado: R$ ${formatCurrency(extracted._debug.diferencaResidualReal)}
+
+O que significa?
+---------------------------------------------------------------
+  Uma diferença residual negativa indica que a SOMA dos
+  componentes conhecidos é MAIOR que o valor total da conta.
+  
+  Isso é anormal e pode indicar:
+
+Possíveis causas:
+---------------------------------------------------------------
+  ❌ Mudanças na estrutura da API da CEMIG
+  ❌ Novos campos adicionados que não estamos capturando
+  ❌ Descontos não mapeados (ex: tarifa social, isençõestributárias)
+  ❌ Erros de arredondamento acumulados
+  ❌ Créditos aplicados não discriminados
+
+⚠️  AÇÃO REQUERIDA:
+  1. Verifique a fatura física/PDF
+  2. Compare os valores manualmente
+  3. Revise o JSON completo da API
+  4. Reporte este caso se persistir
+
+Breakdown da diferença:
+---------------------------------------------------------------
+  Composition:              R$ ${formatCurrency(extracted._debug.compositionTotal)}
+  + Iluminação:             R$ ${formatCurrency(extracted.iluminacaoPublica)}
+  + Multas:                 R$ ${formatCurrency(extracted._debug.multasOficiais)}
+  ───────────────────────────────────────
+  = Soma dos componentes:   R$ ${formatCurrency(extracted._debug.compositionTotal + extracted.iluminacaoPublica + extracted._debug.multasOficiais)}
+  
+  Valor da conta (API):     R$ ${formatCurrency(bill.value)}
+  
+  Diferença (NEGATIVA):     R$ ${formatCurrency(extracted._debug.diferencaResidualReal)} ❌
+
+` : ''}
+===============================================================
+                    FIM DO DEBUG
+===============================================================
 `;
 
+    console.log('[DEBUG VIEW] Debug text generated, length:', debugText.length);
     debugInfo.textContent = debugText;
+    console.log('[DEBUG VIEW] Text assigned to element');
+    } catch (error) {
+      console.error('[DEBUG VIEW ERROR]', error);
+      debugInfo.textContent = `ERRO AO GERAR DEBUG:\n${error.message}\n\nStack:\n${error.stack}`;
+    }
   }
 
   function setupGenerateDocument() {
-    console.log('[SETUP] setupGenerateDocument called');
-    console.log('[SETUP] generateDocBtn:', generateDocBtn);
-    
     generateDocBtn?.addEventListener('click', async () => {
-      console.log('[CLICK] Generate document button clicked!');
-      console.log('[CHECK] currentBillData:', currentBillData);
-      console.log('[CHECK] selectedAccount:', selectedAccount);
-      
       if (!currentBillData) {
-        console.log('[ERROR] No bill data');
         alert('Nenhuma fatura capturada!');
         return;
       }
 
       if (!selectedAccount) {
-        console.log('[ERROR] No account selected');
         alert('Selecione uma conta antes de gerar o documento!');
         return;
       }
 
-      console.log('[START] Starting document generation...');
       const bill = currentBillData.data.billDetails.bills[0];
-      console.log('[BILL] Bill data:', bill);
-      
       const extracted = extractBillData(bill);
-      console.log('[EXTRACTED] Extracted data:', extracted);
-      
       const descontoPercent = parseFloat(descontoInput?.value || 30);
-      console.log('[DESCONTO] Discount percent:', descontoPercent);
-
-      // Usar função centralizada de cálculo
       const calc = calculateAll(extracted, bill.value, descontoPercent);
-      console.log('[CALC] Calculated values:', calc);
 
       // Get customer info from selected account
       const clienteNome = selectedAccount.nome || '';
       const clienteCnpj = selectedAccount.cnpj || '';
       const clienteEndereco = selectedAccount.endereco || '';
       const nInstalacao = selectedAccount.instalacao || '';
-      console.log('[CUSTOMER] Nome:', clienteNome, 'CNPJ:', clienteCnpj);
 
       // Format date - using configured due day + current month/year
       let vencStr = '';
@@ -640,25 +1035,15 @@ VERIFICACAO:
         const dataVenc = new Date(ano, mes, dia);
         vencStr = dataVenc.toLocaleDateString('pt-BR');
       } else {
-        // Fallback to bill due date if no day configured
         const dueDate = new Date(bill.dueDate);
         vencStr = dueDate.toLocaleDateString('pt-BR');
       }
-      console.log('[DATE] Due date:', vencStr);
 
       try {
-        console.log('[TEMPLATE] Fetching template...');
-        // Fetch the template file
         const templateUrl = chrome.runtime.getURL('template.fodt');
-        console.log('[TEMPLATE] URL:', templateUrl);
-        
         const response = await fetch(templateUrl);
-        console.log('[TEMPLATE] Response status:', response.status);
-        
         let template = await response.text();
-        console.log('[TEMPLATE] Template loaded, length:', template.length);
 
-        console.log('[REPLACE] Starting template replacements...');
         // Replace all variables using calculated values
         template = template.replace(/\{\{CLIENTE\}\}/g, clienteNome);
         template = template.replace(/\{\{CNPJPF\}\}/g, clienteCnpj);
@@ -669,17 +1054,17 @@ VERIFICACAO:
         template = template.replace(/\{\{GDKWH\}\}/g, calc.consumo.toLocaleString('pt-BR'));
         template = template.replace(/\{\{GDPRECO\}\}/g, calc.tarifa);
         template = template.replace(/\{\{GDVAL\}\}/g, formatCurrency(calc.valorEnergia));
-        template = template.replace(/\{\{EXTRAVAL\}\}/g, formatCurrency(calc.iluminacao + calc.multa));
+        // EXTRAVAL = Iluminação + Multas (inclui multas oficiais + demais encargos)
+        const extraval = calc.iluminacao + calc.multa;
+        template = template.replace(/\{\{EXTRAVAL\}\}/g, formatCurrency(extraval));
         template = template.replace(/\{\{PERCENT\}\}/g, descontoPercent + '%');
         template = template.replace(/\{\{QTPAGARIA\}\}/g, 'R$ ' + formatCurrency(calc.totalSemMTZ));
         template = template.replace(/\{\{TOTAlMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORPAGAR\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorMTZ));
         template = template.replace(/\{\{ECONOMIZOU\}\}/g, 'R$ ' + formatCurrency(calc.economia));
-        console.log('[REPLACE] Replacements completed');
 
         // Download the file
-        console.log('[DOWNLOAD] Creating blob and download link...');
         const blob = new Blob([template], { type: 'application/vnd.oasis.opendocument.text' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -689,14 +1074,11 @@ VERIFICACAO:
         const sanitizedName = clienteNome.replace(/[/\\?%*:|"<>]/g, '-').trim();
         const fileName = `${sanitizedName}_${nInstalacao}_${bill.referenceMonth.replace('/', '-')}.fodt`;
         a.download = fileName;
-        console.log('[DOWNLOAD] File name:', fileName);
         a.click();
         URL.revokeObjectURL(url);
-        console.log('[DOWNLOAD] Download triggered!');
 
         generateDocBtn.textContent = 'Documento gerado!';
         setTimeout(() => generateDocBtn.textContent = 'Gerar Documento', 2000);
-        console.log('[SUCCESS] Document generation completed successfully!');
       } catch (err) {
         console.error('[ERROR] Error generating document:', err);
         console.error('[ERROR] Stack trace:', err.stack);
