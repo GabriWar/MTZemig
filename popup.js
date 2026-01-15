@@ -1059,7 +1059,7 @@ Breakdown da diferença:
         template = template.replace(/\{\{EXTRAVAL\}\}/g, formatCurrency(extraval));
         template = template.replace(/\{\{PERCENT\}\}/g, descontoPercent + '%');
         template = template.replace(/\{\{QTPAGARIA\}\}/g, 'R$ ' + formatCurrency(calc.totalSemMTZ));
-        template = template.replace(/\{\{TOTAlMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
+        template = template.replace(/\{\{TOTALMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORPAGAR\}\}/g, 'R$ ' + formatCurrency(calc.valorCheio));
         template = template.replace(/\{\{VALORMTZ\}\}/g, 'R$ ' + formatCurrency(calc.valorMTZ));
         template = template.replace(/\{\{ECONOMIZOU\}\}/g, 'R$ ' + formatCurrency(calc.economia));
