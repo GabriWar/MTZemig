@@ -73,6 +73,37 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentBillData) updateCalculations();
   });
 
+  // Meses gerados checkboxes - save when changed
+  const mesesCheckboxes = document.querySelectorAll('#meses-gerados input[type="checkbox"]');
+  mesesCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (!selectedAccount) return;
+
+      // Get all checked months
+      const checkedMeses = [];
+      mesesCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          checkedMeses.push(parseInt(checkbox.dataset.mes));
+        }
+      });
+
+      // Update selectedAccount
+      selectedAccount.mesesGerados = checkedMeses;
+
+      // Save to storage
+      chrome.storage.local.get(['cemigAccounts'], (result) => {
+        const accounts = result.cemigAccounts || [];
+        const idx = accounts.findIndex(a => a.user === selectedAccount.user);
+        if (idx !== -1) {
+          accounts[idx].mesesGerados = checkedMeses;
+          chrome.storage.local.set({ cemigAccounts: accounts }, () => {
+            console.log('Meses gerados saved:', checkedMeses);
+          });
+        }
+      });
+    });
+  });
+
   toggleDebugBtn?.addEventListener('click', () => {
     console.log('[DEBUG BUTTON] Clicked, debugView:', debugView);
     if (debugView) {
@@ -231,6 +262,18 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="data-label">Conta Selecionada</span>
             <span class="data-value" style="color: #00d9a5;">${acc.nome || acc.user}</span>
           `;
+        }
+
+        // Show and populate meses gerados
+        const mesesGeradosDiv = document.getElementById('meses-gerados');
+        if (mesesGeradosDiv) {
+          mesesGeradosDiv.classList.remove('hidden');
+          const checkboxes = mesesGeradosDiv.querySelectorAll('input[type="checkbox"]');
+          const mesesSalvos = acc.mesesGerados || [];
+          checkboxes.forEach(cb => {
+            const mes = parseInt(cb.dataset.mes);
+            cb.checked = mesesSalvos.includes(mes);
+          });
         }
 
         // Enable generate document button
