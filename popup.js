@@ -1068,18 +1068,17 @@ Breakdown da diferença:
       const clienteEndereco = selectedAccount.endereco || '';
       const nInstalacao = selectedAccount.instalacao || '';
 
-      // Format date - using configured due day + current month/year
+      // Format date - using configured due day + month/year from bill
       let vencStr = '';
+      const billDueDate = new Date(bill.dueDate);
       if (selectedAccount.diaVencimento) {
-        const hoje = new Date();
         const dia = parseInt(selectedAccount.diaVencimento);
-        const mes = hoje.getMonth(); // 0-11
-        const ano = hoje.getFullYear();
+        const mes = billDueDate.getMonth(); // Mês da fatura
+        const ano = billDueDate.getFullYear(); // Ano da fatura
         const dataVenc = new Date(ano, mes, dia);
         vencStr = dataVenc.toLocaleDateString('pt-BR');
       } else {
-        const dueDate = new Date(bill.dueDate);
-        vencStr = dueDate.toLocaleDateString('pt-BR');
+        vencStr = billDueDate.toLocaleDateString('pt-BR');
       }
 
       try {
